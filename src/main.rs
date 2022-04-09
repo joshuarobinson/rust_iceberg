@@ -178,6 +178,7 @@ fn convert_iceberg_type_to_arrow(iceberg_type: &str) -> core::result::Result<Arr
         "double" => Ok(ArrowDataType::Float64),
         "timestamptz" => Ok(ArrowDataType::Timestamp(TimeUnit::Microsecond, Some("UTC".to_string()))),
         "string" => Ok(ArrowDataType::Utf8),
+        "binary" => Ok(ArrowDataType::Binary),
         _ => Ok(ArrowDataType::Null),
     }
 }
