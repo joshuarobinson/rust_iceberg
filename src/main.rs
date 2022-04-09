@@ -9,9 +9,6 @@ use tokio::fs;
 
 use async_trait::async_trait;
 
-//use datafusion::arrow::array;
-//use datafusion::arrow::datatypes::{DataType, Field, Schema};
-//use datafusion::arrow::util::pretty;
 use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField, Schema as ArrowSchema, TimeUnit};
 use arrow::error::ArrowError;
 
@@ -378,7 +375,6 @@ async fn get_version_hint(p: &str) -> i64 {
 async fn get_latest_table_version(table_loc: &str) -> String {
     let hintfile_path = Path::new(table_loc).join("metadata").join("version-hint.text");
     let mut hint = get_version_hint(&hintfile_path.into_os_string().into_string().unwrap()).await;
-    //println!("version hint {}", hint);
 
     let mut cur_version: i64 = 0;
     loop {
@@ -483,29 +479,7 @@ async fn main() -> Result<()> {
     let df = ctx.sql("SELECT * FROM demo LIMIT 100").await?;
     df.show().await?;
     
-    ctx.sql("SELECT COUNT(*) FROM demo").await?.show().await?;
-
-    //ctx.register_avro("manifestlist", &manifest_path, AvroReadOptions::default()).await?;
-    //let df = ctx.sql("SELECT manifest_path FROM manifestlist").await?;
-    //let results = df.collect().await?;
-
-    //println!("{:?}", datafiles);
-
-    //let mut dfs = vec![];
-    //for f in datafiles {
-    //    let file_path = str::replace(&f, &table_meta.location, table_loc);
-        //println!("{}", file_path);
-
-   //     dfs.push(ctx.read_parquet(&file_path).await?);
-        //let batches = df.collect().await?;
-        //let rowcount = batches.iter().fold(0, |acc, x| acc + x.num_rows());
-        //println!("{}: {}", file_path, rowcount);
-    //}
-    //println!("Loaded {} dataframes", dfs.len());
-    //let mut df = dfs.pop().unwrap();
-    //while let Some(next_df) = dfs.pop() {
-    //    df = df.union(next_df.clone())?;
-    //}
+    ctx.sql("SELECT COUNT(*) AS rowcount FROM demo").await?.show().await?;
 
     Ok(())
 }
