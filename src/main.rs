@@ -174,7 +174,11 @@ impl TryFrom<&IcebergField> for ArrowField {
 
 fn convert_iceberg_type_to_arrow(iceberg_type: &str) -> core::result::Result<ArrowDataType, ArrowError> {
     match iceberg_type {
+        "boolean" => Ok(ArrowDataType::Boolean),
+        "integer" => Ok(ArrowDataType::Int32),
         "long" => Ok(ArrowDataType::Int64),
+        "float" => Ok(ArrowDataType::Float32),
+        "double" => Ok(ArrowDataType::Float64),
         "timestamptz" => Ok(ArrowDataType::Timestamp(TimeUnit::Microsecond, Some("UTC".to_string()))),
         "string" => Ok(ArrowDataType::Utf8),
         _ => Ok(ArrowDataType::Null),
@@ -410,13 +414,11 @@ impl TableProvider for IcebergTable {
     fn schema(&self) -> Arc<ArrowSchema> {
         let meta = self.metadata.as_ref().unwrap();
         let s = meta.schemas.iter().find(|&s| s.schema_id == meta.current_schema_id).unwrap();
-        println!("{:?}", s);
 
         let arrow_schema = match ArrowSchema::try_from(s) {
             Ok(s) => s,
             Err(_) => ArrowSchema::empty(),
         };
-        println!("schema: {:?}", arrow_schema);
         Arc::new(arrow_schema)
     }
 
@@ -436,7 +438,6 @@ impl TableProvider for IcebergTable {
         let df_object_store = Arc::new(LocalFileSystem {});
 
         let num_rows = self.datafiles.iter().map(|f| &f.record_count).fold(0, |sum, x| sum + *x as usize);
-        println!("Rowcount = {}", num_rows);
 
         let stats = Statistics{ num_rows: Some(num_rows), total_byte_size: Some(100000), column_statistics: None, is_exact: false };
 
@@ -481,6 +482,8 @@ async fn main() -> Result<()> {
     
     let df = ctx.sql("SELECT * FROM demo LIMIT 100").await?;
     df.show().await?;
+    
+    ctx.sql("SELECT COUNT(*) FROM demo").await?.show().await?;
 
     //ctx.register_avro("manifestlist", &manifest_path, AvroReadOptions::default()).await?;
     //let df = ctx.sql("SELECT manifest_path FROM manifestlist").await?;
