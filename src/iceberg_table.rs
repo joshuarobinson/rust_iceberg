@@ -432,11 +432,13 @@ impl TableProvider for IcebergTable {
 
         let df_object_store = Arc::new(LocalFileSystem {});
 
-        let num_rows = self.datafiles.iter().map(|f| &f.record_count).fold(0, |sum, x| sum + *x as usize);
+        let num_rows = Some(self.datafiles.iter().map(|f| &f.record_count).fold(0, |sum, x| sum + *x as usize));
+        let total_byte_size = Some(self.datafiles.iter().map(|f| &f.file_size_in_bytes).fold(0, |sum, x| sum + x) as usize);
 
-        let stats = Statistics{ num_rows: Some(num_rows), total_byte_size: Some(100000), column_statistics: None, is_exact: false };
+        let stats = Statistics{ num_rows, total_byte_size, column_statistics: None, is_exact: false };
 
         let partition_cols: Vec<String> = vec!["first".to_string()];
+
         ParquetFormat::default()
             .create_physical_plan(FileScanConfig {
                     object_store: df_object_store,

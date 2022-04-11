@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
     let mut ctx = ExecutionContext::new();
     ctx.register_table("demo", Arc::new(table)).unwrap();
     
-    let df = ctx.sql("SELECT * FROM demo LIMIT 100").await?;
+    let df = ctx.sql("SELECT * FROM demo LIMIT 10").await?;
     df.show().await?;
 
     ctx.sql("SELECT COUNT(*) AS rowcount FROM demo").await?.show().await?;
