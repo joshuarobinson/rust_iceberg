@@ -12,12 +12,17 @@ async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let table_loc = &args[1];
    
-    let table = IcebergTable::load(table_loc.to_string()).await?;
+    let mut table = IcebergTable::load(table_loc.to_string()).await?;
     println!("{:?}", table.location());
 
     println!("current snapshot is {}", table.current_snapshot().unwrap().snapshot_id);
     println!("{:?}", table.current_snapshot());
     println!("{:?}", table.current_snapshot().unwrap().manifest_list);
+    table.refresh().await?;
+    println!("current snapshot is {}", table.current_snapshot().unwrap().snapshot_id);
+
+    let snapshot_ids: Vec<u64> = table.snapshots().unwrap().into_iter().map(|s| s.snapshot_id).collect();
+    println!("{:?}", snapshot_ids);
 
     //println!("{:?}", table.schema());
 

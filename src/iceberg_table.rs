@@ -200,6 +200,13 @@ impl IcebergTable {
         str::replace(path, &meta.location, self.location())
     }
 
+    pub fn snapshots(&self) -> Option<&Vec<IcebergSnapshot>> {
+        match &self.metadata {
+            Some(t) => Some(&t.snapshots),
+            None => None,
+        }
+    }
+
     pub async fn refresh(&mut self) -> Result<()> {
         let contents = get_latest_table_version(&self.uri).await;
         self.metadata = match serde_json::from_str(&contents) {
