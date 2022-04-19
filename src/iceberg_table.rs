@@ -170,7 +170,7 @@ impl TryFrom<&IcebergField> for ArrowField {
 fn convert_iceberg_type_to_arrow(iceberg_type: &str) -> core::result::Result<ArrowDataType, ArrowError> {
     match iceberg_type {
         "boolean" => Ok(ArrowDataType::Boolean),
-        "integer" => Ok(ArrowDataType::Int32),
+        "int" => Ok(ArrowDataType::Int32),
         "long" => Ok(ArrowDataType::Int64),
         "float" => Ok(ArrowDataType::Float32),
         "double" => Ok(ArrowDataType::Float64),
