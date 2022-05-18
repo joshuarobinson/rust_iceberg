@@ -8,16 +8,18 @@ use tokio::fs;
 
 use async_trait::async_trait;
 
-use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField, Schema as ArrowSchema, TimeUnit};
-use arrow::error::ArrowError;
+use datafusion::arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField, Schema as ArrowSchema, TimeUnit};
+use datafusion::arrow::error::ArrowError;
 
 use datafusion::datasource::file_format::FileFormat;
 use datafusion::datasource::file_format::parquet::ParquetFormat;
-use datafusion::datasource::object_store::local::LocalFileSystem;
+use datafusion_data_access::object_store::local::LocalFileSystem;
 use datafusion::error::Result;
 use datafusion::physical_plan::file_format::FileScanConfig;
 use datafusion::physical_plan::Statistics;
-use datafusion::datasource::{PartitionedFile,TableProvider};
+
+use datafusion::datasource::listing::PartitionedFile;
+use datafusion::datasource::{TableProvider,TableType};
 
 #[allow(dead_code)]
 fn print_type_of<T>(_: &T) {
@@ -411,6 +413,10 @@ async fn get_latest_table_version(table_loc: &str) -> String {
 impl TableProvider for IcebergTable {
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn table_type(&self) -> TableType {
+        TableType::Base
     }
 
     fn schema(&self) -> Arc<ArrowSchema> {

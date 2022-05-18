@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
     //println!("{:?}", table.schema());
 
     // Datafusion
-    let mut ctx = ExecutionContext::new();
+    let ctx = SessionContext::new();
     ctx.register_table("demo", Arc::new(table)).unwrap();
     
     let df = ctx.sql("SELECT * FROM demo LIMIT 10").await?;
