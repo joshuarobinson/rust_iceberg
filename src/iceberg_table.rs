@@ -450,11 +450,7 @@ impl TableProvider for IcebergTable {
 
         let stats = Statistics{ num_rows, total_byte_size, column_statistics: None, is_exact: false };
 
-        let meta = self.metadata.as_ref().unwrap();
-        println!("pspec is {:?}", &meta.partition_spec);
-
-        let partition_cols: Vec<String> = meta.partition_spec.iter().map(|f| f.name.clone()).collect();
-        //let partition_cols: Vec<String> = vec!["first".to_string()];
+        let partition_cols: Vec<String> = vec![];
 
         ParquetFormat::default()
             .create_physical_plan(FileScanConfig {
