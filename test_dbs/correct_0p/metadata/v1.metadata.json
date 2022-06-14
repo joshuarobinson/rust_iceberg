@@ -1,0 +1,137 @@
+{
+  "format-version" : 1,
+  "table-uuid" : "7379e194-35ce-4ea8-b3aa-d4b1255071e3",
+  "location" : "/data/warehouse/db/correct",
+  "last-updated-ms" : 1654596913546,
+  "last-column-id" : 10,
+  "schema" : {
+    "type" : "struct",
+    "schema-id" : 0,
+    "fields" : [ {
+      "id" : 1,
+      "name" : "ts",
+      "required" : false,
+      "type" : "timestamptz"
+    }, {
+      "id" : 2,
+      "name" : "host",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 3,
+      "name" : "iteration",
+      "required" : false,
+      "type" : "long"
+    }, {
+      "id" : 4,
+      "name" : "fullname",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 5,
+      "name" : "ssn",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 6,
+      "name" : "exempt",
+      "required" : false,
+      "type" : "boolean"
+    }, {
+      "id" : 7,
+      "name" : "afloat",
+      "required" : false,
+      "type" : "float"
+    }, {
+      "id" : 8,
+      "name" : "adouble",
+      "required" : false,
+      "type" : "double"
+    }, {
+      "id" : 9,
+      "name" : "job",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 10,
+      "name" : "epoch",
+      "required" : false,
+      "type" : "int"
+    } ]
+  },
+  "current-schema-id" : 0,
+  "schemas" : [ {
+    "type" : "struct",
+    "schema-id" : 0,
+    "fields" : [ {
+      "id" : 1,
+      "name" : "ts",
+      "required" : false,
+      "type" : "timestamptz"
+    }, {
+      "id" : 2,
+      "name" : "host",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 3,
+      "name" : "iteration",
+      "required" : false,
+      "type" : "long"
+    }, {
+      "id" : 4,
+      "name" : "fullname",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 5,
+      "name" : "ssn",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 6,
+      "name" : "exempt",
+      "required" : false,
+      "type" : "boolean"
+    }, {
+      "id" : 7,
+      "name" : "afloat",
+      "required" : false,
+      "type" : "float"
+    }, {
+      "id" : 8,
+      "name" : "adouble",
+      "required" : false,
+      "type" : "double"
+    }, {
+      "id" : 9,
+      "name" : "job",
+      "required" : false,
+      "type" : "string"
+    }, {
+      "id" : 10,
+      "name" : "epoch",
+      "required" : false,
+      "type" : "int"
+    } ]
+  } ],
+  "partition-spec" : [ ],
+  "default-spec-id" : 0,
+  "partition-specs" : [ {
+    "spec-id" : 0,
+    "fields" : [ ]
+  } ],
+  "last-partition-id" : 999,
+  "default-sort-order-id" : 0,
+  "sort-orders" : [ {
+    "order-id" : 0,
+    "fields" : [ ]
+  } ],
+  "properties" : {
+    "owner" : "root"
+  },
+  "current-snapshot-id" : -1,
+  "snapshots" : [ ],
+  "snapshot-log" : [ ],
+  "metadata-log" : [ ]
+}
