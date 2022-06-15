@@ -4,7 +4,6 @@ use std::any::Any;
 use std::convert::TryFrom;
 use std::path::Path;
 use std::sync::Arc;
-use tokio::fs;
 
 use async_trait::async_trait;
 
@@ -20,6 +19,8 @@ use datafusion::physical_plan::Statistics;
 
 use datafusion::datasource::listing::PartitionedFile;
 use datafusion::datasource::{TableProvider,TableType};
+
+use crate::fileio::FileIO;
 
 #[allow(dead_code)]
 fn print_type_of<T>(_: &T) {
@@ -184,7 +185,8 @@ fn convert_iceberg_type_to_arrow(iceberg_type: &str) -> core::result::Result<Arr
 }
 
 pub struct IcebergTable {
-    uri: String,
+    io: FileIO,
+    location: String,
 
     metadata: Option<IcebergMetadata>,
 
@@ -194,7 +196,7 @@ pub struct IcebergTable {
 
 impl IcebergTable {
     pub fn location(&self) -> &str {
-        &self.uri
+        &self.location
     }
 
     fn get_uri_absolute(&self, path: &str) -> String {
@@ -209,8 +211,57 @@ impl IcebergTable {
         }
     }
 
+    async fn read_data_files_from_manifest(&self, manifest_path: String) -> Result<Vec<IcebergDataFile>> {
+        let f = self.io.new_input(&manifest_path).read_to_std().await?;
+        Ok(extract_files_from_manifest(f))
+    }
+
+    // Return positive integer version hint, or 0 for any errors
+    async fn get_version_hint(&self, p: &str) -> i64 {
+        let contents = match self.io.new_input(p).read_to_string().await {
+            Ok(b) => b,
+            Err(_) => return 0,
+        };
+         
+        match contents.parse() {
+            Ok(n) if n > 0 => n,
+            Ok(_) => 1,
+            Err(_) => 1,
+        }
+    }
+
+    async fn get_latest_table_version(&self) -> String {
+        let hintfile_path = Path::new(self.location()).join("metadata").join("version-hint.text");
+        let mut hint = self.get_version_hint(&hintfile_path.into_os_string().into_string().unwrap()).await;
+
+        let mut cur_version: i64 = 0;
+        loop {
+            let p = Path::new(self.location()).join("metadata").join("v".to_string() + &hint.to_string() + ".metadata.json");
+            let pathstring = p.into_os_string().into_string().unwrap();
+
+            let exists = match self.io.new_input(&pathstring).exists().await {
+                Ok(b) => b,
+                Err(_) => false,
+            };
+            if exists {
+                cur_version = hint;
+                hint += 1;
+            } else {
+                break;
+            }
+        }
+        
+        let p = Path::new(self.location()).join("metadata").join("v".to_string() + &cur_version.to_string() + ".metadata.json");
+        let pathstring = p.into_os_string().into_string().unwrap();
+        
+        match self.io.new_input(&pathstring).read_to_string().await {
+            Ok(s) => s,
+            Err(e) => panic!("Did not find a current table version, I don't want to handle this case yet. {}", e),
+        }
+    }
+
     pub async fn refresh(&mut self) -> Result<()> {
-        let contents = get_latest_table_version(&self.uri).await;
+        let contents = self.get_latest_table_version().await;
         self.metadata = match serde_json::from_str(&contents) {
             Ok(m) => Some(m),
             Err(e) => return Err(datafusion::error::DataFusionError::IoError(e.into())),
@@ -221,7 +272,8 @@ impl IcebergTable {
         let manifest_path = str::replace(&self.current_snapshot().unwrap().manifest_list, &meta.location, self.location());
         println!("manifest list path = {}", manifest_path);
 
-        self.current_manifest_paths = get_manifest_list(manifest_path).await?;
+        let f = self.io.new_input(&manifest_path).read_to_std().await?;
+        self.current_manifest_paths = extract_manifest_list(f);
 
         let mut read_reqs = vec![];
         for rawpath in &self.current_manifest_paths {
@@ -231,7 +283,7 @@ impl IcebergTable {
 
             let manifest_path = str::replace(rawpath, &meta.location, self.location());
             println!("reading manifest @ {}", manifest_path);
-            read_reqs.push(read_data_files_from_manifest(manifest_path))
+            read_reqs.push(self.read_data_files_from_manifest(manifest_path))
         }
 
         let results = try_join_all(read_reqs).await.unwrap();
@@ -254,22 +306,11 @@ impl IcebergTable {
     //    self.datafiles.iter().map(|p| self.get_uri_absolute(&p.file_path)).collect()
     //}
 
-    pub async fn load(path: String) -> Result<IcebergTable> {
-        let mut t = match validate_table_location(&path).await {
-            true => IcebergTable { uri: path, metadata: None, current_manifest_paths: vec![], datafiles: vec![] },
-            false => return Err(std::io::Error::new(std::io::ErrorKind::NotFound, "Table not valid").into()),
-        };
+    pub async fn load(io: FileIO, path: String) -> Result<IcebergTable>{
+        let mut t = IcebergTable { io, location: path, metadata: None, current_manifest_paths: vec![], datafiles: vec![] };
         t.refresh().await?;
 
         Ok(t)
-    }
-}
-
-async fn validate_table_location(p: &str) -> bool {
-    match fs::metadata(p).await {
-        Ok(i) if i.is_dir() => true,
-        Ok(_) => false,
-        Err(_) => false,
     }
 }
 
@@ -291,11 +332,6 @@ fn extract_manifest_list(f: impl std::io::Read) -> Vec<String> {
         }
     }
     manifestlist
-}
-
-async fn get_manifest_list(manifest_path: String) -> Result<Vec<String>> {
-    let f = tokio::fs::File::open(&manifest_path).await?.into_std().await;
-    Ok(extract_manifest_list(f))
 }
 
 #[derive(Debug)]
@@ -361,53 +397,6 @@ fn extract_files_from_manifest(f: impl std::io::Read) -> Vec<IcebergDataFile> {
     filelist
 }
 
-async fn read_data_files_from_manifest(manifest_path: String) -> Result<Vec<IcebergDataFile>> {
-    let f = tokio::fs::File::open(manifest_path).await?.into_std().await;
-    Ok(extract_files_from_manifest(f))
-}
-
-// Return positive integer version hint, or 0 for any errors
-async fn get_version_hint(p: &str) -> i64 {
-    let contents = match fs::read_to_string(p).await {
-        Ok(s) => s,
-        Err(_) => "0".to_string(),
-    };
-
-    match contents.parse() {
-        Ok(n) if n > 0 => n,
-        Ok(_) => 1,
-        Err(_) => 1,
-    }
-}
-
-async fn get_latest_table_version(table_loc: &str) -> String {
-    let hintfile_path = Path::new(table_loc).join("metadata").join("version-hint.text");
-    let mut hint = get_version_hint(&hintfile_path.into_os_string().into_string().unwrap()).await;
-
-    let mut cur_version: i64 = 0;
-    loop {
-        let p = Path::new(table_loc).join("metadata").join("v".to_string() + &hint.to_string() + ".metadata.json");
-        let exists = match fs::metadata(p).await {
-            Ok(i) if i.is_file() => true,
-            Ok(_) => false,
-            Err(_) => false,
-        };
-        if exists {
-            cur_version = hint;
-            hint += 1;
-        } else {
-            break;
-        }
-    }
-    
-    let p = Path::new(table_loc).join("metadata").join("v".to_string() + &cur_version.to_string() + ".metadata.json");
-    let contents = match fs::read_to_string(p).await {
-        Ok(s) => s,
-        Err(e) => panic!("Did not find a current table version, I don't want to handle this case yet. {}", e),
-    };
-
-    contents
-}
 
 #[async_trait]
 impl TableProvider for IcebergTable {

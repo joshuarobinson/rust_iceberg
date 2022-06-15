@@ -7,12 +7,18 @@ use datafusion::prelude::*;
 mod iceberg_table;
 use crate::iceberg_table::IcebergTable;
 
+mod fileio;
+use crate::fileio::FileIO;
+
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let table_loc = &args[1];
-   
-    let mut table = IcebergTable::load(table_loc.to_string()).await?;
+
+    let file_io = FileIO {};
+
+    let mut table = IcebergTable::load(file_io, table_loc.to_string()).await?;
     println!("{:?}", table.location());
 
     println!("current snapshot is {}", table.current_snapshot().unwrap().snapshot_id);
