@@ -232,28 +232,11 @@ impl IcebergTable {
 
     async fn get_latest_table_version(&self) -> String {
         let hintfile_path = Path::new(self.location()).join("metadata").join("version-hint.text");
-        let mut hint = self.get_version_hint(&hintfile_path.into_os_string().into_string().unwrap()).await;
+        let hint = self.get_version_hint(&hintfile_path.into_os_string().into_string().unwrap()).await;
 
-        let mut cur_version: i64 = 0;
-        loop {
-            let p = Path::new(self.location()).join("metadata").join("v".to_string() + &hint.to_string() + ".metadata.json");
-            let pathstring = p.into_os_string().into_string().unwrap();
-
-            let exists = match self.io.new_input(&pathstring).exists().await {
-                Ok(b) => b,
-                Err(_) => false,
-            };
-            if exists {
-                cur_version = hint;
-                hint += 1;
-            } else {
-                break;
-            }
-        }
-        
-        let p = Path::new(self.location()).join("metadata").join("v".to_string() + &cur_version.to_string() + ".metadata.json");
+        let p = Path::new(self.location()).join("metadata").join("v".to_string() + &hint.to_string() + ".metadata.json");
         let pathstring = p.into_os_string().into_string().unwrap();
-        
+
         match self.io.new_input(&pathstring).read_to_string().await {
             Ok(s) => s,
             Err(e) => panic!("Did not find a current table version, I don't want to handle this case yet. {}", e),
