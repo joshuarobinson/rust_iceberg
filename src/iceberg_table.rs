@@ -212,8 +212,8 @@ impl IcebergTable {
     }
 
     async fn read_data_files_from_manifest(&self, manifest_path: String) -> Result<Vec<IcebergDataFile>> {
-        let f = self.io.new_input(&manifest_path).read_to_std().await?;
-        Ok(extract_files_from_manifest(f))
+        let contents = self.io.new_input(&manifest_path).read_all().await?;
+        Ok(extract_files_from_manifest(contents.as_slice()))
     }
 
     // Return positive integer version hint, or 0 for any errors
@@ -255,8 +255,8 @@ impl IcebergTable {
         let manifest_path = str::replace(&self.current_snapshot().unwrap().manifest_list, &meta.location, self.location());
         println!("manifest list path = {}", manifest_path);
 
-        let f = self.io.new_input(&manifest_path).read_to_std().await?;
-        self.current_manifest_paths = extract_manifest_list(f);
+        let contents = self.io.new_input(&manifest_path).read_all().await?;
+        self.current_manifest_paths = extract_manifest_list(contents.as_slice());
 
         let mut read_reqs = vec![];
         for rawpath in &self.current_manifest_paths {

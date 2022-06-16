@@ -22,8 +22,8 @@ impl InputFile {
         }
     }
 
-    pub async fn read_to_std(&self) -> Result<std::fs::File> {
-       Ok(fs::File::open(&self.location).await?.into_std().await)
+    pub async fn read_all(&self) -> Result<Vec<u8>> {
+        fs::read(&self.location).await
     }
 
     pub async fn read_to_string(&self) -> Result<String> {
