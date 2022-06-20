@@ -185,7 +185,7 @@ fn convert_iceberg_type_to_arrow(iceberg_type: &str) -> core::result::Result<Arr
 }
 
 pub struct IcebergTable {
-    io: FileIO,
+    io: Arc<FileIO>,
     location: String,
 
     metadata: Option<IcebergMetadata>,
@@ -195,6 +195,10 @@ pub struct IcebergTable {
 }
 
 impl IcebergTable {
+    pub fn new(io: Arc<FileIO>, location: &str) -> Self {
+        IcebergTable { io, location: location.to_string(), metadata: None, current_manifest_paths: vec![], datafiles: vec![] }
+    }
+
     pub fn location(&self) -> &str {
         &self.location
     }
@@ -243,11 +247,11 @@ impl IcebergTable {
         }
     }
 
-    pub async fn refresh(&mut self) -> Result<()> {
+    pub async fn refresh(&mut self) -> std::io::Result<()> {
         let contents = self.get_latest_table_version().await;
         self.metadata = match serde_json::from_str(&contents) {
             Ok(m) => Some(m),
-            Err(e) => return Err(datafusion::error::DataFusionError::IoError(e.into())),
+            Err(e) => return Err(std::io::Error::new::<serde_json::Error>(std::io::ErrorKind::InvalidData, e.into())),
         };
 
         let meta = &self.metadata.as_ref().unwrap();
@@ -283,17 +287,6 @@ impl IcebergTable {
             Some(m) => m.snapshots.iter().find(|&s| s.snapshot_id == m.current_snapshot_id as u64),
             None => None,
         }
-    }
-
-    //fn get_file_uris(&self) -> Vec<String> {
-    //    self.datafiles.iter().map(|p| self.get_uri_absolute(&p.file_path)).collect()
-    //}
-
-    pub async fn load(io: FileIO, path: String) -> Result<IcebergTable>{
-        let mut t = IcebergTable { io, location: path, metadata: None, current_manifest_paths: vec![], datafiles: vec![] };
-        t.refresh().await?;
-
-        Ok(t)
     }
 }
 

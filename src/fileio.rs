@@ -7,14 +7,17 @@ pub struct InputFile {
 }
 
 impl InputFile {
+    #[allow(dead_code)]
     async fn len(&self) -> Result<u64> {
         Ok(fs::metadata(&self.location).await?.len())
     }
     
+    #[allow(dead_code)]
     fn location(&self) -> &str {
         &self.location
     }
 
+    #[allow(dead_code)]
     pub async fn exists(&self) -> Result<bool> {
         match fs::metadata(&self.location).await {
             Ok(_) => Ok(true),

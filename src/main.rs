@@ -5,10 +5,13 @@ use datafusion::error::Result;
 use datafusion::prelude::*;
 
 mod iceberg_table;
-use crate::iceberg_table::IcebergTable;
+//use crate::iceberg_table::IcebergTable;
 
 mod fileio;
 use crate::fileio::FileIO;
+
+mod file_catalog;
+use crate::file_catalog::FileCatalog;
 
 
 #[tokio::main]
@@ -17,14 +20,15 @@ async fn main() -> Result<()> {
     let table_loc = &args[1];
 
     let file_io = FileIO {};
+    let file_cat = FileCatalog::new(file_io);
 
-    let mut table = IcebergTable::load(file_io, table_loc.to_string()).await?;
+    let table = file_cat.load_table(table_loc).await?;
     println!("{:?}", table.location());
 
     println!("current snapshot is {}", table.current_snapshot().unwrap().snapshot_id);
     println!("{:?}", table.current_snapshot());
     println!("{:?}", table.current_snapshot().unwrap().manifest_list);
-    table.refresh().await?;
+    //table.refresh().await?;
     println!("current snapshot is {}", table.current_snapshot().unwrap().snapshot_id);
 
     let snapshot_ids: Vec<u64> = table.snapshots().unwrap().into_iter().map(|s| s.snapshot_id).collect();
