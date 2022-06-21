@@ -12,7 +12,7 @@ use datafusion::arrow::error::ArrowError;
 
 use datafusion::datasource::file_format::FileFormat;
 use datafusion::datasource::file_format::parquet::ParquetFormat;
-use datafusion_data_access::object_store::local::LocalFileSystem;
+use datafusion::datasource::object_store::ObjectStoreUrl;
 use datafusion::error::Result;
 use datafusion::physical_plan::file_format::FileScanConfig;
 use datafusion::physical_plan::Statistics;
@@ -397,6 +397,7 @@ impl TableProvider for IcebergTable {
 
     async fn scan(
         &self,
+        _ctx: &datafusion::execution::context::SessionState,
         projection: &Option<Vec<usize>>,
         filters: &[datafusion::logical_plan::Expr],
         limit: Option<usize>,
@@ -408,7 +409,7 @@ impl TableProvider for IcebergTable {
             })
             .collect::<datafusion::error::Result<_>>()?;
 
-        let df_object_store = Arc::new(LocalFileSystem {});
+        let backing_store = ObjectStoreUrl::local_filesystem();
 
         let num_rows = Some(self.datafiles.iter().map(|f| &f.record_count).fold(0, |sum, x| sum + *x as usize));
         let total_byte_size = Some(self.datafiles.iter().map(|f| &f.file_size_in_bytes).fold(0, |sum, x| sum + x) as usize);
@@ -419,7 +420,7 @@ impl TableProvider for IcebergTable {
 
         ParquetFormat::default()
             .create_physical_plan(FileScanConfig {
-                    object_store: df_object_store,
+                    object_store_url: backing_store,
                     file_schema: self.schema(),
                     file_groups: partitions,
                     statistics: stats,
