@@ -220,35 +220,21 @@ impl IcebergTable {
         Ok(extract_files_from_manifest(contents.as_slice()))
     }
 
-    // Return positive integer version hint, or 0 for any errors
-    async fn get_version_hint(&self, p: &str) -> i64 {
-        let contents = match self.io.new_input(p).read_to_string().await {
-            Ok(b) => b,
-            Err(_) => return 0,
-        };
-         
-        match contents.parse() {
-            Ok(n) if n > 0 => n,
-            Ok(_) => 1,
-            Err(_) => 1,
-        }
-    }
-
-    async fn get_latest_table_version(&self) -> String {
+    async fn get_latest_table_metadata_location(&self) -> std::io::Result<String> {
         let hintfile_path = Path::new(self.location()).join("metadata").join("version-hint.text");
-        let hint = self.get_version_hint(&hintfile_path.into_os_string().into_string().unwrap()).await;
+        let hintfile_loc = hintfile_path.into_os_string().into_string().unwrap();
 
-        let p = Path::new(self.location()).join("metadata").join("v".to_string() + &hint.to_string() + ".metadata.json");
-        let pathstring = p.into_os_string().into_string().unwrap();
+        let version_hint = self.io.new_input(&hintfile_loc).read_to_string().await?;
 
-        match self.io.new_input(&pathstring).read_to_string().await {
-            Ok(s) => s,
-            Err(e) => panic!("Did not find a current table version, I don't want to handle this case yet. {}", e),
-        }
+        let p = Path::new(self.location()).join("metadata").join("v".to_string() + &version_hint + ".metadata.json");
+        Ok(p.into_os_string().into_string().unwrap())
     }
 
     pub async fn refresh(&mut self) -> std::io::Result<()> {
-        let contents = self.get_latest_table_version().await;
+        let head_location = self.get_latest_table_metadata_location().await?;
+
+        let contents = self.io.new_input(&head_location).read_to_string().await?;
+
         self.metadata = match serde_json::from_str(&contents) {
             Ok(m) => Some(m),
             Err(e) => return Err(std::io::Error::new::<serde_json::Error>(std::io::ErrorKind::InvalidData, e.into())),
