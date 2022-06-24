@@ -2,7 +2,6 @@ use futures::future::try_join_all;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::convert::TryFrom;
-use std::path::Path;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -20,6 +19,7 @@ use datafusion::physical_plan::Statistics;
 use datafusion::datasource::listing::PartitionedFile;
 use datafusion::datasource::{TableProvider,TableType};
 
+use crate::file_catalog::MetastoreService;
 use crate::fileio::FileIO;
 
 #[allow(dead_code)]
@@ -186,6 +186,7 @@ fn convert_iceberg_type_to_arrow(iceberg_type: &str) -> core::result::Result<Arr
 
 pub struct IcebergTable {
     io: Arc<FileIO>,
+    metastore_svc: MetastoreService,
     location: String,
 
     metadata: Option<IcebergMetadata>,
@@ -195,8 +196,8 @@ pub struct IcebergTable {
 }
 
 impl IcebergTable {
-    pub fn new(io: Arc<FileIO>, location: &str) -> Self {
-        IcebergTable { io, location: location.to_string(), metadata: None, current_manifest_paths: vec![], datafiles: vec![] }
+    pub(crate) fn new(io: Arc<FileIO>, metastore_svc: MetastoreService, location: &str) -> Self {
+        IcebergTable { io, metastore_svc, location: location.to_string(), metadata: None, current_manifest_paths: vec![], datafiles: vec![] }
     }
 
     pub fn location(&self) -> &str {
@@ -220,18 +221,8 @@ impl IcebergTable {
         Ok(extract_files_from_manifest(contents.as_slice()))
     }
 
-    async fn get_latest_table_metadata_location(&self) -> std::io::Result<String> {
-        let hintfile_path = Path::new(self.location()).join("metadata").join("version-hint.text");
-        let hintfile_loc = hintfile_path.into_os_string().into_string().unwrap();
-
-        let version_hint = self.io.new_input(&hintfile_loc).read_to_string().await?;
-
-        let p = Path::new(self.location()).join("metadata").join("v".to_string() + &version_hint + ".metadata.json");
-        Ok(p.into_os_string().into_string().unwrap())
-    }
-
     pub async fn refresh(&mut self) -> std::io::Result<()> {
-        let head_location = self.get_latest_table_metadata_location().await?;
+        let head_location = self.metastore_svc.get_latest_table_metadata_location(self.location()).await?;
 
         let contents = self.io.new_input(&head_location).read_to_string().await?;
 
