@@ -7,8 +7,8 @@ use datafusion::prelude::*;
 mod iceberg_table;
 //use crate::iceberg_table::IcebergTable;
 
-mod fileio;
-use crate::fileio::FileIO;
+mod file_io;
+use crate::file_io::FileIO;
 
 mod file_catalog;
 use crate::file_catalog::FileCatalog;

@@ -2,17 +2,17 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::io::Result;
 
-use crate::fileio::FileIO;
+use crate::file_io::FileIO;
 use crate::iceberg_table::IcebergTable;
 
 
-pub(crate) struct MetastoreService {
+pub(crate) struct FileMetastoreService {
     io: Arc<FileIO>
 }
 
-impl MetastoreService {
+impl FileMetastoreService {
     pub(crate) fn new(io: Arc<FileIO>) -> Self {
-        MetastoreService { io }
+        FileMetastoreService { io }
     }
 
     pub(crate) async fn get_latest_table_metadata_location(&self, location: &str) -> std::io::Result<String> {
@@ -36,7 +36,7 @@ impl FileCatalog {
     }
 
     pub async fn load_table(&self, identifier: &str) -> Result<IcebergTable> {
-        let mut t = IcebergTable::new(Arc::clone(&self.io), MetastoreService::new(Arc::clone(&self.io)), identifier);
+        let mut t = IcebergTable::new(Arc::clone(&self.io), FileMetastoreService::new(Arc::clone(&self.io)), identifier);
         t.refresh().await?;
 
         Ok(t)
