@@ -19,7 +19,7 @@ use datafusion::physical_plan::Statistics;
 use datafusion::datasource::listing::PartitionedFile;
 use datafusion::datasource::{TableProvider,TableType};
 
-use crate::file_catalog::FileMetastoreService;
+use crate::file_catalog::MetastoreService;
 use crate::file_io::FileIO;
 
 #[allow(dead_code)]
@@ -186,7 +186,7 @@ fn convert_iceberg_type_to_arrow(iceberg_type: &str) -> core::result::Result<Arr
 
 pub struct IcebergTable {
     io: Arc<FileIO>,
-    metastore_svc: FileMetastoreService,
+    metastore_svc: Box<dyn MetastoreService + Send + Sync>,
     location: String,
 
     metadata: Option<IcebergMetadata>,
@@ -196,7 +196,7 @@ pub struct IcebergTable {
 }
 
 impl IcebergTable {
-    pub(crate) fn new(io: Arc<FileIO>, metastore_svc: FileMetastoreService, location: &str) -> Self {
+    pub(crate) fn new(io: Arc<FileIO>, metastore_svc: Box<dyn MetastoreService + Send + Sync>, location: &str) -> Self {
         IcebergTable { io, metastore_svc, location: location.to_string(), metadata: None, current_manifest_paths: vec![], datafiles: vec![] }
     }
 
@@ -222,7 +222,7 @@ impl IcebergTable {
     }
 
     pub async fn refresh(&mut self) -> std::io::Result<()> {
-        let head_location = self.metastore_svc.get_latest_table_metadata_location(self.location()).await?;
+        let head_location = self.metastore_svc.get_current_table_metadata_location(self.location()).await?;
 
         let contents = self.io.new_input(&head_location).read_to_string().await?;
 

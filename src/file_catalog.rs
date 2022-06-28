@@ -2,9 +2,15 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::io::Result;
 
+use async_trait::async_trait;
+
 use crate::file_io::FileIO;
 use crate::iceberg_table::IcebergTable;
 
+#[async_trait]
+pub trait MetastoreService {
+    async fn get_current_table_metadata_location(&self, location: &str) -> std::io::Result<String>;
+}
 
 pub(crate) struct FileMetastoreService {
     io: Arc<FileIO>
@@ -14,8 +20,11 @@ impl FileMetastoreService {
     pub(crate) fn new(io: Arc<FileIO>) -> Self {
         FileMetastoreService { io }
     }
+}
 
-    pub(crate) async fn get_latest_table_metadata_location(&self, location: &str) -> std::io::Result<String> {
+#[async_trait]
+impl MetastoreService for FileMetastoreService {
+    async fn get_current_table_metadata_location(&self, location: &str) -> std::io::Result<String> {
         let hintfile_path = Path::new(location).join("metadata").join("version-hint.text");
         let hintfile_loc = hintfile_path.into_os_string().into_string().unwrap();
 
@@ -36,7 +45,7 @@ impl FileCatalog {
     }
 
     pub async fn load_table(&self, identifier: &str) -> Result<IcebergTable> {
-        let mut t = IcebergTable::new(Arc::clone(&self.io), FileMetastoreService::new(Arc::clone(&self.io)), identifier);
+        let mut t = IcebergTable::new(Arc::clone(&self.io), Box::new(FileMetastoreService::new(Arc::clone(&self.io))), identifier);
         t.refresh().await?;
 
         Ok(t)
