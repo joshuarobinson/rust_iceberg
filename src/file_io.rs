@@ -1,6 +1,17 @@
 use tokio::fs;
 use tokio::io::Result;
 
+use async_trait::async_trait;
+
+#[async_trait]
+pub trait BaseFile {
+    async fn read_all(&self) -> std::io::Result<Vec<u8>>;
+    async fn read_to_string(&self) -> std::io::Result<String>;
+}
+
+pub trait BaseIO {
+    fn new_input(&self, location: &str) -> Box<dyn BaseFile + Send + Sync>;
+}
 
 pub struct InputFile {
     location: String,
@@ -24,12 +35,15 @@ impl InputFile {
             Err(_) => Ok(false),
         }
     }
+}
 
-    pub async fn read_all(&self) -> Result<Vec<u8>> {
+#[async_trait]
+impl BaseFile for InputFile {
+    async fn read_all(&self) -> Result<Vec<u8>> {
         fs::read(&self.location).await
     }
 
-    pub async fn read_to_string(&self) -> Result<String> {
+    async fn read_to_string(&self) -> Result<String> {
         fs::read_to_string(&self.location).await
     }
 }
@@ -37,8 +51,8 @@ impl InputFile {
 pub struct FileIO {
 }
 
-impl FileIO {
-    pub fn new_input(&self, location: &str) -> InputFile {
-        InputFile { location: location.to_string() }
+impl BaseIO for FileIO {
+    fn new_input(&self, location: &str) -> Box<dyn BaseFile + Send + Sync> {
+        Box::new(InputFile { location: location.to_string() })
     }
 }

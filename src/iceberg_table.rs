@@ -20,7 +20,7 @@ use datafusion::datasource::listing::PartitionedFile;
 use datafusion::datasource::{TableProvider,TableType};
 
 use crate::file_catalog::MetastoreService;
-use crate::file_io::FileIO;
+use crate::file_io::BaseIO;
 
 #[allow(dead_code)]
 fn print_type_of<T>(_: &T) {
@@ -185,7 +185,7 @@ fn convert_iceberg_type_to_arrow(iceberg_type: &str) -> core::result::Result<Arr
 }
 
 pub struct IcebergTable {
-    io: Arc<FileIO>,
+    io: Arc<dyn BaseIO + Send + Sync>,
     metastore_svc: Box<dyn MetastoreService + Send + Sync>,
     location: String,
 
@@ -196,8 +196,8 @@ pub struct IcebergTable {
 }
 
 impl IcebergTable {
-    pub(crate) fn new(io: Arc<FileIO>, metastore_svc: Box<dyn MetastoreService + Send + Sync>, location: &str) -> Self {
-        IcebergTable { io, metastore_svc, location: location.to_string(), metadata: None, current_manifest_paths: vec![], datafiles: vec![] }
+    pub(crate) fn new(io: Arc<dyn BaseIO + Send + Sync>, metastore_svc: Box<dyn MetastoreService + Send + Sync>, location: &str) -> Self {
+        IcebergTable { io: Arc::clone(&io), metastore_svc, location: location.to_string(), metadata: None, current_manifest_paths: vec![], datafiles: vec![] }
     }
 
     pub fn location(&self) -> &str {

@@ -4,7 +4,7 @@ use tokio::io::Result;
 
 use async_trait::async_trait;
 
-use crate::file_io::FileIO;
+use crate::file_io::BaseIO;
 use crate::iceberg_table::IcebergTable;
 
 #[async_trait]
@@ -13,12 +13,12 @@ pub trait MetastoreService {
 }
 
 pub(crate) struct FileMetastoreService {
-    io: Arc<FileIO>
+    io: Arc<dyn BaseIO + Send + Sync>
 }
 
 impl FileMetastoreService {
-    pub(crate) fn new(io: Arc<FileIO>) -> Self {
-        FileMetastoreService { io }
+    pub(crate) fn new(io: Arc<dyn BaseIO + Send + Sync>) -> Self {
+        FileMetastoreService { io: Arc::clone(&io) }
     }
 }
 
@@ -36,12 +36,12 @@ impl MetastoreService for FileMetastoreService {
 }
 
 pub struct FileCatalog {
-    io: Arc<FileIO>,
+    io: Arc<dyn BaseIO + Send + Sync>,
 }
 
 impl FileCatalog {
-    pub fn new(io: FileIO) -> Self {
-        Self { io: Arc::new(io) }
+    pub fn new(io: Arc<dyn BaseIO + Send + Sync>) -> Self {
+        Self { io: Arc::clone(&io) }
     }
 
     pub async fn load_table(&self, identifier: &str) -> Result<IcebergTable> {
